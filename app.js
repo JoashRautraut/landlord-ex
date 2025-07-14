@@ -324,7 +324,7 @@ function initMap() {
 async function drawLandAreas(map) {
   const { data: landAreas, error } = await supabase
     .from('land_areas')
-    .select('id, owner_name, path, created_at');
+    .select('id, user_id, owner_name, path, created_at');
   if (error) {
     console.error('Error fetching land areas:', error);
     return;
@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function fetchAndRenderLandAreas() {
   const { data: landAreas, error } = await supabase
     .from('land_areas')
-    .select('id, owner_name, path');
+    .select('id, user_id, owner_name, path');
   if (error) {
     document.getElementById('landarea-count').textContent = 'Land Areas: Error';
     document.getElementById('landarea-list').innerHTML = '<li>Error loading land areas</li>';
@@ -603,35 +603,33 @@ window.navigateTo = (function(origNav) {
 
 // Helper function to show owner profile popup
 async function showOwnerProfilePopup(area, coords, map, latlng) {
-  const ownerName = area.owner_name;
+  // All alert statements removed
+  console.log('showOwnerProfilePopup called', area);
   let ownerDetails = null;
+  const ownerName = area.owner_name;
   let addedBy = 'N/A';
-  let userIdToUse = null;
-  try {
-    const { data, error } = await supabase
-      .from('owners')
-      .select('*')
-      .ilike('name', ownerName)
-      .single();
-    if (!error && data) ownerDetails = data;
-  } catch {}
-
-  // Use ownerDetails.user_id if present, else area.user_id
-  userIdToUse = ownerDetails?.user_id || area.user_id;
-  try {
-    if (userIdToUse) {
+  console.log('area.user_id value:', area.user_id, typeof area.user_id);
+  if (area.user_id) {
+    // Removed alert('About to fetch user for user_id: ' + area.user_id);
+    console.log('About to fetch user for user_id:', area.user_id);
+    try {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('user_firstname, user_lastname, user_email')
-        .eq('user_id', userIdToUse)
+        .eq('user_id', area.user_id)
         .single();
+      // Removed alert('After user fetch');
+      console.log('userData:', userData, 'userError:', userError);
       if (!userError && userData) {
-        addedBy = userData.user_firstname || '';
-        if (userData.user_lastname) addedBy += ' ' + userData.user_lastname;
-        if (!addedBy.trim()) addedBy = userData.user_email || userIdToUse;
+        addedBy = `${userData.user_firstname || ''} ${userData.user_lastname || ''}`.trim();
+        if (!addedBy) addedBy = userData.user_email;
       }
+    } catch (e) {
+      console.log('Exception during user fetch:', e);
     }
-  } catch {}
+  }
+  console.log('Final addedBy:', addedBy);
+  // Remove the owners fetch block entirely
 
   // Fallback: If latlng is missing, use the first coordinate
   let popupLatLng = latlng;
